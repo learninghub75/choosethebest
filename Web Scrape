@@ -1,0 +1,59 @@
+import requests
+from bs4 import BeautifulSoup
+from threading import Thread
+from pymongo import MongoClient
+
+
+site = "https://www.physiqapparel.com/"
+
+req = requests.get(site).text
+response = BeautifulSoup(req, 'lxml')
+#menu = response.find('div', class_='dropdown-column-products')
+menu_soup = response.find_all('li', class_='dropdown-column-header')
+menu_dict = {}
+url_list =[]
+for collection in menu_soup:
+    key = collection.a.text
+    subitems = collection.find_all('li', class_='submenu-item')
+    values =[]
+    for items in subitems:
+        item = items.a.text
+        urls = items.a['href']
+        values.append(item)
+        url_list.append(urls)
+    menu_dict.update({key:values})
+print(menu_dict)
+print(url_list)
+print(len(url_list))
+
+myclient = MongoClient("mongodb://localhost:27017/")
+mydb = myclient["mydatabase"]
+
+def scrp():
+    data_html = requests.get('https://www.physiqapparel.com/mens/tank-tops/').text
+    data_soup = BeautifulSoup(data_html, 'lxml')
+    article = data_soup.find_all('article', class_='product-item')
+    for items in article:
+        product_link = items.find('a', class_='product-item-thumbnail')["href"]
+        print(product_link)
+        product_page = requests.get(product_link).text
+        product_page_soup = BeautifulSoup(product_page, 'lxml')
+        product_detail = product_page_soup.find('div', class_="product-column-row")
+        product_title = product_detail.h1.text
+        product_desc = product_detail.find('div', class_="secondary-title").text
+        product_offer_price = product_detail.find('span', class_="price-rrp").text
+        product_discount_price = product_detail.find('span', class_="price-value").text
+        #product_rating_detail = product_page_soup.find('span', class_="yotpo-sum-reviews")
+        #product_rating = product_rating_detail.find('span', class_="sr-only").text
+        print(product_title)
+
+# threadlist = []
+# for url in url_list:
+#     t = Thread(target='scrp', args=(url,))
+#     t.start()
+#     threadlist.append(t)
+#
+# for b in threadlist:
+#     b.join()
+
+scrp()
